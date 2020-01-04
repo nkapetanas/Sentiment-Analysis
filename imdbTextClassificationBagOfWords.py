@@ -79,6 +79,8 @@ x_train_data = train_data["Content"]
 y_train_data = train_data["Label"]
 classes = np.unique(train_data['Label'])
 
+ngram_vectorizer = CountVectorizer(binary=True, ngram_range=(1, 3))
+
 kfold = KFold(n_splits=5, random_state=42, shuffle=True)
 
 fold = 0
@@ -89,7 +91,6 @@ for train_index, test_index in kfold.split(x_train_data):
     x_train_k, x_test_k = x_train_data.iloc[train_index], x_train_data.iloc[test_index]
     y_train_k, y_test_k = y_train_data.iloc[train_index], y_train_data.iloc[test_index]
 
-    ngram_vectorizer = CountVectorizer(binary=True, ngram_range=(1, 3))
     X_train = ngram_vectorizer.fit_transform(x_train_k)
     X_test = ngram_vectorizer.transform(x_test_k)
 
