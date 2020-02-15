@@ -1,25 +1,14 @@
 import string
 
-# from tensorflow import keras
-# from keras import Sequential
-# from keras.layers.embeddings import Embedding
-# from keras.layers import Flatten, Dense
-# from keras.preprocessing import sequence
-# from numpy import array
-from sklearn.feature_extraction.text import HashingVectorizer, CountVectorizer, TfidfTransformer
-from sklearn.ensemble import RandomForestClassifier
-import nltk
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
 from nltk.stem import WordNetLemmatizer
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, cross_val_predict
-from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC, SVR
+from sklearn.model_selection import KFold
 
 DATASET_PATH_TRAIN = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/train.csv"
 DATASET_PATH_TEST = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/test_without_labels.csv"
@@ -29,6 +18,12 @@ TOKENS_ALPHANUMERIC = '[A-Za-z0-9]+(?=\\s+)'
 stop = set(stopwords.words('english'))
 stemmer = PorterStemmer()
 lemmatizer = WordNetLemmatizer()
+
+
+def createCSV(prediction, csvName):
+    np.savetxt(csvName,
+               np.dstack((np.arange(0, prediction.size), prediction))[0], "%d,%d",
+               header="Id,Predicted")
 
 
 def read_dataset(dataset):
@@ -77,13 +72,21 @@ clean_data(test_data)
 
 x_train_data = train_data["Content"]
 y_train_data = train_data["Label"]
-classes = np.unique(train_data['Label'])
+
+test_data_ = test_data['Content']
+
+scores_svm_accuracy = []
+scores_svm_precision = []
+scores_svm_recall = []
+scores_svm_f1 = []
 
 ngram_vectorizer = CountVectorizer(binary=True, ngram_range=(1, 3))
 
 kfold = KFold(n_splits=5, random_state=42, shuffle=True)
 
+sgd_classifier = SGDClassifier(max_iter=1000, loss='hinge')
 fold = 0
+
 for train_index, test_index in kfold.split(x_train_data):
     fold += 1
     print("Fold: %s" % fold)
@@ -94,14 +97,23 @@ for train_index, test_index in kfold.split(x_train_data):
     X_train = ngram_vectorizer.fit_transform(x_train_k)
     X_test = ngram_vectorizer.transform(x_test_k)
 
-    sgd_classifier = SGDClassifier(max_iter=1000, loss='hinge')
     sgd_classifier.fit(X_train, y_train_k)
     predictedValues = sgd_classifier.predict(X_test)
 
-    print("Accuracy SGDClassifier: %s"
-          % (accuracy_score(y_test_k, predictedValues)))
     accuracy, precision, recall, f1 = metrics = calculate_metrics(y_test_k, predictedValues)
-    print("accuracy:" + str(accuracy))
-    print("precision:" + str(precision))
-    print("recall:" + str(recall))
-    print("f1:" + str(f1))
+
+    scores_svm_accuracy.append(accuracy)
+    scores_svm_precision.append(precision)
+    scores_svm_recall.append(recall)
+    scores_svm_f1.append(f1)
+
+print("SGDClassifier metrics")
+print("Accuracy:" + str(np.mean(scores_svm_accuracy)))
+print("Precision:" + str(np.mean(scores_svm_precision)))
+print("Recall:" + str(np.mean(scores_svm_recall)))
+print("F1:" + str(np.mean(scores_svm_f1)))
+
+test_data_ = ngram_vectorizer.transform(test_data_)
+
+predictedValues = sgd_classifier.predict(test_data_)
+createCSV(predictedValues, "sentiment_predictions.csv")
