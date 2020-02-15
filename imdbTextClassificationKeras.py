@@ -98,7 +98,7 @@ def get_model():
     model.add(Dense(32, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
     model.compile(optimizer='rmsprop', loss='binary_crossentropy',
-                  metrics=['accuracy', recall_metric, recall_metric, f1])
+                  metrics=['accuracy', recall_metric, precision_metric, f1])
 
     return model
 
@@ -109,6 +109,10 @@ def get_callbacks(name_weights, patience_lr):
                                        mode='min')
     return [mcp_save, reduce_lr_loss]
 
+scores_accuracy = []
+scores_precision = []
+scores_recall = []
+scores_f1 = []
 
 tokenizer = Tokenizer(num_words=max_words)
 
@@ -153,8 +157,19 @@ for j, (train_idx, val_idx) in enumerate(folds):
     name_weights = "final_model_fold" + str(j) + "_weights.h5"
     callbacks = get_callbacks(name_weights=name_weights, patience_lr=10)
 
-    model.fit(X_valid_cv, y_valid_cv, batch_size=32, epochs=10, verbose=2, callbacks=callbacks)
-    print(model.evaluate(X_valid_cv, y_valid_cv, verbose=0))
+    model.fit(X_valid_cv, y_valid_cv, batch_size=32, epochs=5, verbose=2, callbacks=callbacks)
+    score = model.evaluate(X_valid_cv, y_valid_cv, verbose=0)
+
+    scores_accuracy.append(score[0])
+    scores_recall.append(score[1])
+    scores_precision.append(score[2])
+    scores_f1.append(score[3])
+
+print("Keras Model metrics")
+print("Accuracy:" + str(np.mean(scores_accuracy)))
+print("Precision:" + str(np.mean(scores_precision)))
+print("Recall:" + str(np.mean(scores_recall)))
+print("F1:" + str(np.mean(scores_f1)))
 
 sequences = tokenizer.texts_to_sequences(test_data['Content'])
 x_test = pad_sequences(sequences, maxlen=maxlen)
