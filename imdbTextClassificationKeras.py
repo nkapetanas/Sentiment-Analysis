@@ -20,8 +20,8 @@ DATASET_PATH_TEST = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/t
 
 labels = []
 maxlen = 100
-training_samples = 200
-validation_samples = 10000
+training_samples = 20000
+validation_samples = 5000
 max_words = 10000
 
 # Create the token pattern: TOKENS_ALPHANUMERIC
@@ -52,7 +52,7 @@ def get_lemmatized_text(corpus):
 def clean_data(dataframe):
     dataframe['Content'] = dataframe['Content'].str.lower()
     dataframe['Content'] = dataframe['Content'].str.replace('[^\w\s]', '')
-    dataframe['Content'] = dataframe['Content'].str.replace('<[^<]+?>', '') # remove HTML tags
+    dataframe['Content'] = dataframe['Content'].str.replace('<[^<]+?>', '')  # remove HTML tags
     dataframe['Content'] = dataframe['Content'].apply(
         lambda x: ' '.join([item for item in x.split() if item not in stop]))
     dataframe['Content'] = dataframe['Content'].apply(
@@ -60,6 +60,10 @@ def clean_data(dataframe):
     dataframe['Content'] = dataframe['Content'].apply(
         lambda x: ' '.join([stemmer.stem(word) for word in x.split()]))
 
+def createCSV(prediction, csvName):
+    df = pd.DataFrame(prediction, columns=['Predicted'], index=np.arange(0, prediction.size))
+    df.index.name = 'Id'
+    df.to_csv(csvName)
 
 def recall_metric(y_true, y_pred):
     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
@@ -93,7 +97,8 @@ def get_model():
     model.add(Flatten())
     model.add(Dense(32, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
-    model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy', recall_metric, recall_metric, f1])
+    model.compile(optimizer='rmsprop', loss='binary_crossentropy',
+                  metrics=['accuracy', recall_metric, recall_metric, f1])
 
     return model
 
@@ -110,8 +115,8 @@ tokenizer = Tokenizer(num_words=max_words)
 train_data = load_dataset(DATASET_PATH_TRAIN)
 test_data = load_dataset(DATASET_PATH_TEST)
 
-# clean_data(train_data)
-# clean_data(test_data)
+clean_data(train_data)
+clean_data(test_data)
 
 x_train_data = train_data["Content"]
 y_train_data = np.asarray(train_data["Label"]).astype('float32')
@@ -130,8 +135,8 @@ labels = labels[indices]
 
 x_train = data[:training_samples]
 y_train = labels[:training_samples]
-x_test = data[training_samples: training_samples + validation_samples]
-y_test = labels[training_samples: training_samples + validation_samples]
+x_test = data[training_samples:]
+y_test = labels[training_samples:]
 
 folds, x_train, y_train = get_kfold(x_train, y_train, 5)
 
@@ -151,8 +156,8 @@ for j, (train_idx, val_idx) in enumerate(folds):
     model.fit(X_valid_cv, y_valid_cv, batch_size=32, epochs=10, verbose=2, callbacks=callbacks)
     print(model.evaluate(X_valid_cv, y_valid_cv, verbose=0))
 
-
-sequences = tokenizer.texts_to_sequences(test_data)
+sequences = tokenizer.texts_to_sequences(test_data['Content'])
 x_test = pad_sequences(sequences, maxlen=maxlen)
 pred = model.predict_classes(x_test)
-print(pred)
+
+createCSV(pred, "sentiment_predictions.csv")
