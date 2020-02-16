@@ -36,19 +36,6 @@ def load_dataset(dataset):
     return df
 
 
-def remove_punctuation(text):
-    no_punct = "".join([word for word in text if word not in string.punctuation])
-    return no_punct
-
-
-def get_stemmed_text(corpus):
-    return [' '.join([stemmer.stem(word) for word in review.split()]) for review in corpus]
-
-
-def get_lemmatized_text(corpus):
-    return [' '.join([lemmatizer.lemmatize(word) for word in review.split()]) for review in corpus]
-
-
 def clean_data(dataframe):
     dataframe['Content'] = dataframe['Content'].str.lower()
     dataframe['Content'] = dataframe['Content'].str.replace('[^\w\s]', '')

@@ -16,7 +16,6 @@ DATASET_PATH_TEST = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/t
 # Create the token pattern: TOKENS_ALPHANUMERIC
 TOKENS_ALPHANUMERIC = '[A-Za-z0-9]+(?=\\s+)'
 stop = set(stopwords.words('english'))
-stemmer = PorterStemmer()
 lemmatizer = WordNetLemmatizer()
 
 
@@ -36,10 +35,6 @@ def remove_punctuation(text):
     return no_punct
 
 
-def get_stemmed_text(corpus):
-    return [' '.join([stemmer.stem(word) for word in review.split()]) for review in corpus]
-
-
 def get_lemmatized_text(corpus):
     return [' '.join([lemmatizer.lemmatize(word) for word in review.split()]) for review in corpus]
 
@@ -51,8 +46,6 @@ def clean_data(dataframe):
         lambda x: ' '.join([item for item in x.split() if item not in stop]))
     dataframe['Content'] = dataframe['Content'].apply(
         lambda x: ' '.join([lemmatizer.lemmatize(word) for word in x.split()]))
-    dataframe['Content'] = dataframe['Content'].apply(
-        lambda x: ' '.join([stemmer.stem(word) for word in x.split()]))
 
 
 def calculate_metrics(y_actual, y_predicted):
