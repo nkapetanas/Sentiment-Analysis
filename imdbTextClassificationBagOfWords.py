@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from nltk.stem.porter import PorterStemmer
-from sklearn.feature_extraction.text import CountVectorizer
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, plot_precision_recall_curve
+from sklearn.model_selection import KFold, validation_curve
 
 DATASET_PATH_TRAIN = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/train.csv"
 DATASET_PATH_TEST = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/test_without_labels.csv"
@@ -29,23 +29,14 @@ def read_dataset(dataset):
     df = pd.read_csv(dataset, encoding='utf-8')
     return df
 
-
-def remove_punctuation(text):
-    no_punct = "".join([word for word in text if word not in string.punctuation])
-    return no_punct
-
-
-def get_lemmatized_text(corpus):
-    return [' '.join([lemmatizer.lemmatize(word) for word in review.split()]) for review in corpus]
-
-
 def clean_data(dataframe):
     dataframe['Content'] = dataframe['Content'].str.lower()
     dataframe['Content'] = dataframe['Content'].str.replace('[^\w\s]', '')
+    dataframe['Content'] = dataframe['Content'].str.replace('<[^<]+?>', '')  # remove HTML tags
     dataframe['Content'] = dataframe['Content'].apply(
         lambda x: ' '.join([item for item in x.split() if item not in stop]))
-    dataframe['Content'] = dataframe['Content'].apply(
-        lambda x: ' '.join([lemmatizer.lemmatize(word) for word in x.split()]))
+    # dataframe['Content'] = dataframe['Content'].apply(
+    #     lambda x: ' '.join([lemmatizer.lemmatize(word) for word in x.split()]))
 
 
 def calculate_metrics(y_actual, y_predicted):
@@ -110,3 +101,7 @@ test_data_ = ngram_vectorizer.transform(test_data_)
 
 predictedValues = sgd_classifier.predict(test_data_)
 createCSV(predictedValues, "sentiment_predictions.csv")
+
+# X_train = ngram_vectorizer.fit_transform(x_train_data)
+# plot_precision_recall_curve(sgd_classifier, X_train, y_train_data)
+# plt.show()
