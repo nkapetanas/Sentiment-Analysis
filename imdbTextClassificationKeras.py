@@ -1,7 +1,6 @@
-import string
-
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 from keras.layers import Dense
@@ -12,7 +11,6 @@ from keras_preprocessing.sequence import pad_sequences
 from keras_preprocessing.text import Tokenizer
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from nltk.stem.porter import PorterStemmer
 from sklearn.model_selection import StratifiedKFold
 
 DATASET_PATH_TRAIN = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/train.csv"
@@ -20,14 +18,12 @@ DATASET_PATH_TEST = "C:/Users/Delta/PycharmProjects/Sentiment-Analysis/dataset/t
 
 labels = []
 maxlen = 100
-training_samples = 20000
-validation_samples = 5000
+training_samples = 17500
 max_words = 10000
 
 # Create the token pattern: TOKENS_ALPHANUMERIC
 TOKENS_ALPHANUMERIC = '[A-Za-z0-9]+(?=\\s+)'
 stop = set(stopwords.words('english'))
-stemmer = PorterStemmer()
 lemmatizer = WordNetLemmatizer()
 
 
@@ -42,15 +38,20 @@ def clean_data(dataframe):
     dataframe['Content'] = dataframe['Content'].str.replace('<[^<]+?>', '')  # remove HTML tags
     dataframe['Content'] = dataframe['Content'].apply(
         lambda x: ' '.join([item for item in x.split() if item not in stop]))
-    dataframe['Content'] = dataframe['Content'].apply(
-        lambda x: ' '.join([lemmatizer.lemmatize(word) for word in x.split()]))
-    dataframe['Content'] = dataframe['Content'].apply(
-        lambda x: ' '.join([stemmer.stem(word) for word in x.split()]))
+
+def create_plot_Keras_model(field):
+    plt.plot(history.history[field])
+    plt.title('model ' + field)
+    plt.ylabel(field)
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
 
 def createCSV(prediction, csvName):
     df = pd.DataFrame(prediction, columns=['Predicted'], index=np.arange(0, prediction.size))
     df.index.name = 'Id'
     df.to_csv(csvName)
+
 
 def recall_metric(y_true, y_pred):
     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
@@ -73,7 +74,7 @@ def f1(y_true, y_pred):
 
 
 def get_kfold(x_train, y_train, k):
-    folds = list(StratifiedKFold(n_splits=k, shuffle=True, random_state=1).split(x_train, y_train))
+    folds = list(StratifiedKFold(n_splits=k, shuffle=True, random_state=42).split(x_train, y_train))
     return folds, x_train, y_train
 
 
@@ -115,12 +116,12 @@ y_train_data = np.asarray(train_data["Label"]).astype('float32')
 tokenizer.fit_on_texts(x_train_data)
 sequences = tokenizer.texts_to_sequences(x_train_data)
 
-word_index = tokenizer.word_index
 data = pad_sequences(sequences, maxlen=maxlen)
 labels = np.array(y_train_data)
 
 indices = np.arange(data.shape[0])
 np.random.shuffle(indices)
+
 data = data[indices]
 labels = labels[indices]
 
@@ -133,6 +134,7 @@ folds, x_train, y_train = get_kfold(x_train, y_train, 5)
 
 model = get_model()
 model.summary()
+history = None
 
 for j, (train_idx, val_idx) in enumerate(folds):
     print('\nFold ', j)
@@ -144,7 +146,7 @@ for j, (train_idx, val_idx) in enumerate(folds):
     name_weights = "final_model_fold" + str(j) + "_weights.h5"
     callbacks = get_callbacks(name_weights=name_weights, patience_lr=10)
 
-    model.fit(X_valid_cv, y_valid_cv, batch_size=32, epochs=5, verbose=2, callbacks=callbacks)
+    history = model.fit(X_valid_cv, y_valid_cv, batch_size=32, epochs=5, verbose=2, callbacks=callbacks)
     score = model.evaluate(X_valid_cv, y_valid_cv, verbose=0)
 
     scores_accuracy.append(score[0])
@@ -163,3 +165,10 @@ x_test = pad_sequences(sequences, maxlen=maxlen)
 pred = model.predict_classes(x_test)
 
 createCSV(pred, "sentiment_predictions.csv")
+
+# list all data in history
+print(history.history.keys())
+
+create_plot_Keras_model('recall_metric')
+create_plot_Keras_model('precision_metric')
+create_plot_Keras_model('f1')
